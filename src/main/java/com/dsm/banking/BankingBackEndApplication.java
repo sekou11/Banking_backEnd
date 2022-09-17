@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Bean;
 import com.dsm.banking.dao.AccountOperationDao;
 import com.dsm.banking.dao.BankAccountDao;
 import com.dsm.banking.dao.CustomerDao;
+import com.dsm.banking.dto.CustomerDto;
 import com.dsm.banking.ennum.AccountStatus;
 import com.dsm.banking.ennum.OperationType;
 import com.dsm.banking.entities.AccountOperation;
@@ -23,7 +24,9 @@ import com.dsm.banking.entities.SavingAccount;
 import com.dsm.banking.exceptions.BalanceNotSufficientException;
 import com.dsm.banking.exceptions.BankAccountNotFoundException;
 import com.dsm.banking.exceptions.CustomerNotFoundException;
-import com.dsm.banking.services.BankService;
+import com.dsm.banking.services.AccountOperationService;
+import com.dsm.banking.services.BankAccountServices;
+import com.dsm.banking.services.CustomerService;
 
 @SpringBootApplication
 public class BankingBackEndApplication {
@@ -33,25 +36,26 @@ public class BankingBackEndApplication {
 	}
 
 	@Bean
-	public CommandLineRunner start1(BankService bankService) {
+	public CommandLineRunner start1(CustomerService customerService 
+			,BankAccountServices bankaccountService, AccountOperationService operationService) {
 		return args -> {
 			Stream.of("dia", "sekou", "momo").forEach(name -> {
-				Customer customer = new Customer();
-				customer.setName(name);
-				customer.setEmail(name + "@email.com");
-				bankService.saveCustomer(customer);
+				CustomerDto customerDto = new CustomerDto();
+				customerDto.setName(name);
+				customerDto.setEmail(name + "@email.com");
+				customerService .saveCustomer(customerDto);
 			});
-			bankService.listCustomer().forEach(cust -> {
+			customerService .listCustomer().forEach(cust -> {
 				try {
 
-					bankService.saveCurrentBankAccount(Math.random() * 9000, 9000, cust.getId());
-					bankService.saveSavingBankAccount(Math.random() * 120000, 5.5, cust.getId());
+					bankaccountService.saveCurrentBankAccount(Math.random() * 9000, 9000, cust.getId());
+					bankaccountService.saveSavingBankAccount(Math.random() * 120000, 5.5, cust.getId());
 
-					List<BankAccount> bankAccountList = bankService.listBankAccount();
+					List<BankAccount> bankAccountList =bankaccountService.listBankAccount();
 					for (BankAccount bankAccount : bankAccountList) {
 						for (int i = 0; i < 10; i++) {
-							bankService.credit(bankAccount.getId(), 10000 + Math.random() * 120000, "Credit");
-							bankService.debit(bankAccount.getId(), 1000 + Math.random() * 9000, "Debit");
+							operationService.credit(bankAccount.getId(), 10000 + Math.random() * 120000, "Credit");
+							operationService.debit(bankAccount.getId(), 1000 + Math.random() * 9000, "Debit");
 						}
 					}
 
