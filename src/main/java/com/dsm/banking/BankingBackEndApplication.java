@@ -13,7 +13,10 @@ import org.springframework.context.annotation.Bean;
 import com.dsm.banking.dao.AccountOperationDao;
 import com.dsm.banking.dao.BankAccountDao;
 import com.dsm.banking.dao.CustomerDao;
+import com.dsm.banking.dto.BankAccountDto;
+import com.dsm.banking.dto.CurrentBankAccountDto;
 import com.dsm.banking.dto.CustomerDto;
+import com.dsm.banking.dto.SavingBankAccountDto;
 import com.dsm.banking.ennum.AccountStatus;
 import com.dsm.banking.ennum.OperationType;
 import com.dsm.banking.entities.AccountOperation;
@@ -51,19 +54,27 @@ public class BankingBackEndApplication {
 					bankaccountService.saveCurrentBankAccount(Math.random() * 9000, 9000, cust.getId());
 					bankaccountService.saveSavingBankAccount(Math.random() * 120000, 5.5, cust.getId());
 
-					List<BankAccount> bankAccountList =bankaccountService.listBankAccount();
-					for (BankAccount bankAccount : bankAccountList) {
-						for (int i = 0; i < 10; i++) {
-							operationService.credit(bankAccount.getId(), 10000 + Math.random() * 120000, "Credit");
-							operationService.debit(bankAccount.getId(), 1000 + Math.random() * 9000, "Debit");
-						}
-					}
+					
 
-				} catch (CustomerNotFoundException | BankAccountNotFoundException | BalanceNotSufficientException e) {
+				} catch (CustomerNotFoundException e) {
 
 					e.printStackTrace();
 				}
 			});
+			
+			List<BankAccountDto> bankAccountList =bankaccountService.listBankAccount();
+			for (BankAccountDto bankAccount : bankAccountList) {
+				for (int i = 0; i < 10; i++) {
+					String accountId ;
+					  if (bankAccount instanceof SavingBankAccountDto) {
+						accountId = ((SavingBankAccountDto) bankAccount).getId();
+					} else {
+						accountId = ((CurrentBankAccountDto) bankAccount).getId();
+					}
+					operationService.credit(accountId, 10000 + Math.random() * 120000, " Credit");
+					operationService.debit(accountId, 1000 + Math.random() * 9000, " Debit");
+				}
+			}
 
 		};
 

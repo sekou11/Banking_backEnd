@@ -3,12 +3,15 @@ package com.dsm.banking.services.impl;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
-import com.dsm.banking.dao.AccountOperationDao;
 import com.dsm.banking.dao.BankAccountDao;
 import com.dsm.banking.dao.CustomerDao;
+import com.dsm.banking.dto.BankAccountDto;
+import com.dsm.banking.dto.CurrentBankAccountDto;
+import com.dsm.banking.dto.SavingBankAccountDto;
 import com.dsm.banking.ennum.AccountStatus;
 import com.dsm.banking.entities.BankAccount;
 import com.dsm.banking.entities.CurrentAccount;
@@ -16,6 +19,7 @@ import com.dsm.banking.entities.Customer;
 import com.dsm.banking.entities.SavingAccount;
 import com.dsm.banking.exceptions.BankAccountNotFoundException;
 import com.dsm.banking.exceptions.CustomerNotFoundException;
+import com.dsm.banking.mappers.BankAccountMapperImpl;
 import com.dsm.banking.services.BankAccountServices;
 
 import lombok.AllArgsConstructor;
@@ -29,23 +33,43 @@ public class BankAccountServiceImpl implements BankAccountServices {
 
 	private CustomerDao customerDao;
 	private BankAccountDao bankAccountDao;
-	private AccountOperationDao accountOperationDao;
+
+	private BankAccountMapperImpl dtoMapper;
 
 	@Override
-	public List<BankAccount> listBankAccount() {
+	public List<BankAccountDto> listBankAccount() {
+		List<BankAccount> bankAccounts = bankAccountDao.findAll();
 
-		return bankAccountDao.findAll();
+		List<BankAccountDto> bankAccountDtos = bankAccounts.stream().map(bankAccount -> {
+
+			if (bankAccount instanceof SavingAccount) {
+				SavingAccount savingAccount = (SavingAccount) bankAccount;
+				return dtoMapper.fromSavingAccount(savingAccount);
+			} else {
+				CurrentAccount currentAccount = (CurrentAccount) bankAccount;
+				return dtoMapper.fromcurrentAccount(currentAccount);
+			}
+		}).collect(Collectors.toList());
+		return bankAccountDtos;
+
 	}
 
 	@Override
-	public BankAccount getBankAccount(String accountId) throws BankAccountNotFoundException {
+	public BankAccountDto getBankAccount(String accountId) throws BankAccountNotFoundException {
 		BankAccount bankAccount = bankAccountDao.findById(accountId)
 				.orElseThrow(() -> new BankAccountNotFoundException("Bank Account Not Found"));
-		return bankAccount;
+		if (bankAccount instanceof SavingAccount) {
+			SavingAccount savingAccount = (SavingAccount) bankAccount;
+			return dtoMapper.fromSavingAccount(savingAccount);
+		} else {
+			CurrentAccount currentAccount = (CurrentAccount) bankAccount;
+			return dtoMapper.fromcurrentAccount(currentAccount);
+		}
+
 	}
 
 	@Override
-	public CurrentAccount saveCurrentBankAccount(double initialBalance, double overDraft, Long customerId)
+	public CurrentBankAccountDto saveCurrentBankAccount(double initialBalance, double overDraft, Long customerId)
 			throws CustomerNotFoundException {
 		Customer customer = customerDao.findById(customerId).orElse(null);
 		if (customer == null) {
@@ -60,11 +84,11 @@ public class BankAccountServiceImpl implements BankAccountServices {
 		currentAccount.setOverDraft(overDraft);
 		CurrentAccount currentAccountSaved = bankAccountDao.save(currentAccount);
 
-		return currentAccountSaved;
+		return dtoMapper.fromcurrentAccount(currentAccountSaved);
 	}
 
 	@Override
-	public SavingAccount saveSavingBankAccount(double initialBalance, double interestRate, Long customerId)
+	public SavingBankAccountDto saveSavingBankAccount(double initialBalance, double interestRate, Long customerId)
 			throws CustomerNotFoundException {
 		Customer customer = customerDao.findById(customerId)
 				.orElseThrow(() -> new CustomerNotFoundException("Customer Not Found"));
@@ -76,7 +100,7 @@ public class BankAccountServiceImpl implements BankAccountServices {
 		savingAccount.setStatus(AccountStatus.CREATED);
 		savingAccount.setInterestRate(interestRate);
 		SavingAccount savingAccountSaved = bankAccountDao.save(savingAccount);
-		return savingAccountSaved;
+		return dtoMapper.fromSavingAccount(savingAccountSaved);
 	}
 
 }
